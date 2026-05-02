@@ -260,14 +260,14 @@ export default function ResearchPapersScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#E32227" size="large" />
+          <ActivityIndicator color="#dc2626" size="large" />
         </View>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderResearch}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#E32227" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#dc2626" />}
           contentContainerStyle={[styles.list, !filtered.length && styles.emptyList]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
@@ -298,14 +298,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 6,
     borderRadius: 20, backgroundColor: "#f2f4f7", marginRight: 8,
   },
-  filterTabActive: { backgroundColor: "#E32227" },
+  filterTabActive: { backgroundColor: "#dc2626" },
   filterTabText: { fontSize: 13, fontWeight: "600", color: "#667085" },
   filterTabTextActive: { color: "#fff" },
   searchWrapper: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
   searchInput: {
     backgroundColor: "#fff", borderWidth: 1, borderColor: "#e4e7ec",
     borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
-    fontSize: 14, color: "#101828", minHeight: 48,
+    fontSize: 14, color: "#101828",
   },
   list: { padding: 16 },
   emptyList: { flexGrow: 1 },
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   },
   cardIconBox: { width: 90, height: 90 },
   cardIcon: { width: 90, height: 90 },
-  placeholderIcon: { backgroundColor: "#fef2f2", alignItems: "center", justifyContent: "center" },
+  placeholderIcon: { backgroundColor: "#fee2e2", alignItems: "center", justifyContent: "center" },
   placeholderText: { fontSize: 28 },
   cardBody: { flex: 1, padding: 12, justifyContent: "space-between" },
   cardTitle: { fontSize: 14, fontWeight: "700", color: "#101828", lineHeight: 20 },
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   emptySubtitle: { fontSize: 13, color: "#667085", marginTop: 4 },
   errorBox: { margin: 16, padding: 14, backgroundColor: "#fee2e2", borderRadius: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   errorText: { fontSize: 13, color: "#991b1b", flex: 1 },
-  retryText: { fontSize: 13, fontWeight: "700", color: "#E32227", marginLeft: 8 },
+  retryText: { fontSize: 13, fontWeight: "700", color: "#dc2626", marginLeft: 8 },
 });
 
 const modal = StyleSheet.create({
@@ -349,7 +349,7 @@ const modal = StyleSheet.create({
   closeText: { fontSize: 14, color: "#667085", fontWeight: "700" },
   body: { flex: 1 },
   thumbnail: { width: "100%", height: 200, backgroundColor: "#f9fafb" },
-  placeholderThumb: { width: "100%", height: 200, backgroundColor: "#fef2f2", alignItems: "center", justifyContent: "center" },
+  placeholderThumb: { width: "100%", height: 200, backgroundColor: "#fee2e2", alignItems: "center", justifyContent: "center" },
   placeholderIcon: { fontSize: 60 },
   section: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", padding: 20, paddingBottom: 12, gap: 12 },
   researchTitle: { fontSize: 16, fontWeight: "700", color: "#101828", flex: 1, lineHeight: 24 },
@@ -362,9 +362,9 @@ const modal = StyleSheet.create({
   gridValue: { fontSize: 14, fontWeight: "600", color: "#101828" },
   pdfBtn: {
     marginHorizontal: 20, marginBottom: 20, paddingVertical: 12,
-    backgroundColor: "#fef2f2", borderRadius: 10, alignItems: "center",
+    backgroundColor: "#fee2e2", borderRadius: 10, alignItems: "center",
   },
-  pdfBtnText: { fontSize: 14, fontWeight: "700", color: "#E32227" },
+  pdfBtnText: { fontSize: 14, fontWeight: "700", color: "#dc2626" },
   actionLabel: { fontSize: 13, fontWeight: "700", color: "#344054", paddingHorizontal: 20, marginBottom: 10 },
   actionRow: { flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingBottom: 40 },
   actionBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
