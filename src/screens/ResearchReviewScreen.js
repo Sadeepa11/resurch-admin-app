@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import api from "../api/api";
 
-function StarRating({ rating, color = "#F5A623" }) {
+function StarRating({ rating, color = "#f59e0b" }) {
   return (
     <View style={styles.stars}>
       {[1, 2, 3, 4, 5].map((s) => (
@@ -85,7 +85,7 @@ function ReviewCard({ item, onDelete }) {
       ) : null}
 
       <View style={styles.ratingRow}>
-        <StarRating rating={item.rating || 0} color="#F5A623" />
+        <StarRating rating={item.rating || 0} color="#f59e0b" />
         <Text style={styles.ratingValue}>{item.rating}/5</Text>
       </View>
 
@@ -186,20 +186,20 @@ export default function ResearchReviewScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#E32227" size="large" />
+          <ActivityIndicator color="#dc2626" size="large" />
         </View>
       ) : (
         <FlatList
           data={comments}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => <ReviewCard item={item} onDelete={handleDelete} />}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#E32227" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#dc2626" />}
           contentContainerStyle={[styles.list, !comments.length && styles.emptyList]}
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={
-            loadingMore ? <ActivityIndicator color="#E32227" style={{ paddingVertical: 16 }} /> : null
+            loadingMore ? <ActivityIndicator color="#dc2626" style={{ paddingVertical: 16 }} /> : null
           }
           ListEmptyComponent={
             <View style={styles.empty}>
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   searchInput: {
     backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e4e7ec",
     borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
-    fontSize: 14, color: "#101828", minHeight: 48,
+    fontSize: 14, color: "#101828",
   },
   list: { padding: 16 },
   emptyList: { flexGrow: 1 },
@@ -232,9 +232,9 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
   avatar: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: "#fef2f2", alignItems: "center", justifyContent: "center", marginRight: 10,
+    backgroundColor: "#eff6ff", alignItems: "center", justifyContent: "center", marginRight: 10,
   },
-  avatarText: { fontSize: 16, fontWeight: "700", color: "#E32227" },
+  avatarText: { fontSize: 16, fontWeight: "700", color: "#dc2626" },
   userInfo: { flex: 1 },
   userName: { fontSize: 14, fontWeight: "700", color: "#101828" },
   userEmail: { fontSize: 11, color: "#98a2b3", marginTop: 1 },
@@ -262,5 +262,5 @@ const styles = StyleSheet.create({
   successText: { fontSize: 13, color: "#065f46", fontWeight: "600" },
   errorBox: { margin: 16, marginBottom: 0, padding: 14, backgroundColor: "#fee2e2", borderRadius: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   errorText: { fontSize: 13, color: "#991b1b", flex: 1 },
-  retryText: { fontSize: 13, fontWeight: "700", color: "#E32227", marginLeft: 8 },
+  retryText: { fontSize: 13, fontWeight: "700", color: "#dc2626", marginLeft: 8 },
 });

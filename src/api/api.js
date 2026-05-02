@@ -9,7 +9,7 @@ const api = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 15000,
+  timeout: 20000,
 });
 
 api.interceptors.request.use(
@@ -26,9 +26,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("API Error:", error.response?.status, error.response?.data);
+    if (__DEV__) {
+      console.warn("API Error:", error.response?.status, error.config?.url);
+    }
     return Promise.reject(error);
   }
 );
+
+export const apiBase = API_BASE_URL.replace(/\/api$/, "");
 
 export default api;
