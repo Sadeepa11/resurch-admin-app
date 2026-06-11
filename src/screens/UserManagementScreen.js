@@ -7,10 +7,13 @@ import { colors, spacing, radius } from "../theme/colors";
 
 const ROLES = [
   { label: "All Roles", value: "" },
-  { label: "User", value: "User" },
-  { label: "Manager", value: "Manager" },
-  { label: "Admin", value: "Admin" },
-  { label: "Super Admin", value: "SuperAdmin" },
+  { label: "General User", value: "GENERAL_USER" },
+  { label: "Investor", value: "INVESTOR" },
+  { label: "Both", value: "BOTH" },
+  { label: "Manager", value: "manager" },
+  { label: "Marketing", value: "marketing" },
+  { label: "Admin", value: "admin" },
+  { label: "Super Admin", value: "superadmin" },
 ];
 
 const STATUSES = [
@@ -59,21 +62,64 @@ function UserFormModal({ visible, onClose, onSave, user }) {
     first_name: "",
     last_name: "",
     email: "",
-    role: "User",
+    role: "manager",
     password: "",
+    phone: "",
+    address: "",
+    userType: "OTHER",
+    schoolName: "",
+    gradeLevel: "",
+    studentId: "",
+    parentFirstName: "",
+    parentLastName: "",
+    parentEmail: "",
+    parentPhone: "",
+    relation: "Father",
+    investmentPreferences: "",
   });
 
   useEffect(() => {
     if (user) {
+      const isStudent = user.user_type === 'student' || user.schoolName || user.gradeLevel;
       setForm({
         first_name: user.first_name || "",
         last_name: user.last_name || "",
         email: user.email || "",
-        role: user.role || "User",
+        role: user.role || "manager",
         password: "",
+        phone: user.phone || user.phoneNumber || "",
+        address: user.address || "",
+        userType: user.user_type || (isStudent ? "SCHOOL_STUDENT" : "OTHER"),
+        schoolName: user.schoolName || "",
+        gradeLevel: user.gradeLevel ? String(user.gradeLevel) : "",
+        studentId: user.studentId || "",
+        parentFirstName: user.parentFirstName || "",
+        parentLastName: user.parentLastName || "",
+        parentEmail: user.parentEmail || "",
+        parentPhone: user.parentPhone || "",
+        relation: user.relation || "Father",
+        investmentPreferences: user.investmentPreferences || "",
       });
     } else {
-      setForm({ first_name: "", last_name: "", email: "", role: "User", password: "" });
+      setForm({
+        first_name: "",
+        last_name: "",
+        email: "",
+        role: "manager",
+        password: "",
+        phone: "",
+        address: "",
+        userType: "OTHER",
+        schoolName: "",
+        gradeLevel: "",
+        studentId: "",
+        parentFirstName: "",
+        parentLastName: "",
+        parentEmail: "",
+        parentPhone: "",
+        relation: "Father",
+        investmentPreferences: "",
+      });
     }
   }, [user, visible]);
 
@@ -90,6 +136,8 @@ function UserFormModal({ visible, onClose, onSave, user }) {
     }
   };
 
+  const isStudent = form.userType === "SCHOOL_STUDENT";
+
   return (
     <Modal
       visible={visible}
@@ -105,23 +153,87 @@ function UserFormModal({ visible, onClose, onSave, user }) {
       <Input label="First name" value={form.first_name} onChangeText={(v) => setForm({ ...form, first_name: v })} autoCapitalize="words" />
       <Input label="Last name" value={form.last_name} onChangeText={(v) => setForm({ ...form, last_name: v })} autoCapitalize="words" />
       <Input label="Email" value={form.email} onChangeText={(v) => setForm({ ...form, email: v })} keyboardType="email-address" />
+      
       <Select
         label="Role"
         value={form.role}
         onValueChange={(v) => setForm({ ...form, role: v })}
         options={[
-          { label: "User", value: "User" },
-          { label: "Manager", value: "Manager" },
-          { label: "Marketing", value: "Marketing" },
-          { label: "Admin", value: "Admin" },
+          { label: "Manager", value: "manager" },
+          { label: "Marketing", value: "marketing" },
+          { label: "Admin", value: "admin" },
+          { label: "Super Admin", value: "superadmin" },
+          { label: "General User", value: "GENERAL_USER" },
+          { label: "Investor", value: "INVESTOR" },
+          { label: "Both", value: "BOTH" },
         ]}
       />
+
       <Input
         label={user ? "Password (leave blank to keep)" : "Password"}
         value={form.password}
         onChangeText={(v) => setForm({ ...form, password: v })}
         secureTextEntry
       />
+
+      {/* Phone Number and Address */}
+      {["GENERAL_USER", "INVESTOR", "BOTH"].includes(form.role) && (
+        <>
+          <Input label="Phone Number" value={form.phone} onChangeText={(v) => setForm({ ...form, phone: v })} keyboardType="phone-pad" />
+          <Input label="Address" value={form.address} onChangeText={(v) => setForm({ ...form, address: v })} />
+        </>
+      )}
+
+      {/* User Type for General Users */}
+      {["GENERAL_USER", "BOTH"].includes(form.role) && (
+        <Select
+          label="User Type"
+          value={form.userType}
+          onValueChange={(v) => setForm({ ...form, userType: v })}
+          options={[
+            { label: "Other", value: "OTHER" },
+            { label: "School Student", value: "SCHOOL_STUDENT" },
+          ]}
+        />
+      )}
+
+      {/* Student Fields */}
+      {["GENERAL_USER", "BOTH"].includes(form.role) && isStudent && (
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionHeader}>Student Details</Text>
+          <Input label="School Name" value={form.schoolName} onChangeText={(v) => setForm({ ...form, schoolName: v })} />
+          <Input label="Grade Level" value={form.gradeLevel} onChangeText={(v) => setForm({ ...form, gradeLevel: v })} keyboardType="number-pad" />
+          <Input label="Student ID" value={form.studentId} onChangeText={(v) => setForm({ ...form, studentId: v })} />
+          
+          <Text style={styles.sectionHeader}>Parent/Guardian Details</Text>
+          <Input label="Parent First Name" value={form.parentFirstName} onChangeText={(v) => setForm({ ...form, parentFirstName: v })} />
+          <Input label="Parent Last Name" value={form.parentLastName} onChangeText={(v) => setForm({ ...form, parentLastName: v })} />
+          <Input label="Parent Email" value={form.parentEmail} onChangeText={(v) => setForm({ ...form, parentEmail: v })} keyboardType="email-address" />
+          <Input label="Parent Phone" value={form.parentPhone} onChangeText={(v) => setForm({ ...form, parentPhone: v })} keyboardType="phone-pad" />
+          <Select
+            label="Relation"
+            value={form.relation}
+            onValueChange={(v) => setForm({ ...form, relation: v })}
+            options={[
+              { label: "Father", value: "Father" },
+              { label: "Mother", value: "Mother" },
+              { label: "Guardian", value: "Guardian" },
+              { label: "Other", value: "Other" },
+            ]}
+          />
+        </View>
+      )}
+
+      {/* Investor Fields */}
+      {["INVESTOR", "BOTH"].includes(form.role) && (
+        <Input
+          label="Investment Preferences"
+          value={form.investmentPreferences}
+          onChangeText={(v) => setForm({ ...form, investmentPreferences: v })}
+          placeholder="e.g. Technology, healthcare, seed stage"
+          multiline
+        />
+      )}
     </Modal>
   );
 }
@@ -187,12 +299,129 @@ export default function UserManagementScreen() {
     ]);
 
   const onSave = async (form) => {
+    const isRegularUser = ["GENERAL_USER", "INVESTOR", "BOTH"].includes(form.role);
+
     if (editing) {
-      const payload = { ...form };
-      if (!payload.password) delete payload.password;
+      // Edit User
+      const payload = {
+        first_name: form.first_name,
+        last_name: form.last_name,
+        email: form.email,
+        phone: form.phone,
+        address: form.address,
+      };
+
+      if (form.password) {
+        payload.password = form.password;
+      }
+
+      // If they are an admin, update role. If they are regular, do not send role to avoid validation fail on PUT
+      const adminRoles = ["admin", "manager", "marketing", "superadmin"];
+      if (adminRoles.includes(form.role.toLowerCase())) {
+        payload.role = form.role.toLowerCase();
+      }
+
+      if (form.userType === "SCHOOL_STUDENT") {
+        payload.schoolName = form.schoolName;
+        payload.gradeLevel = form.gradeLevel;
+        payload.studentId = form.studentId;
+        payload.parentFirstName = form.parentFirstName;
+        payload.parentLastName = form.parentLastName;
+        payload.parentEmail = form.parentEmail;
+        payload.parentPhone = form.parentPhone;
+        payload.relation = form.relation;
+      }
+
+      if (form.role === "INVESTOR" || form.role === "BOTH") {
+        payload.investmentPreferences = form.investmentPreferences;
+      }
+
       await usersApi.update(editing.id, payload);
     } else {
-      await usersApi.create(form);
+      // Create User
+      if (isRegularUser) {
+        if (form.role === "INVESTOR") {
+          const payload = {
+            investorDetails: {
+              firstName: form.first_name,
+              lastName: form.last_name,
+              email: form.email,
+              password: form.password,
+              phone: form.phone,
+              address: form.address || "",
+              investmentPreferences: form.investmentPreferences,
+            },
+          };
+          await usersApi.registerInvestor(payload);
+        } else if (form.role === "GENERAL_USER") {
+          const payload = {
+            generalUserDetails: {
+              firstName: form.first_name,
+              lastName: form.last_name,
+              email: form.email,
+              password: form.password,
+              phone: form.phone,
+            },
+            isSchoolStudent: form.userType === "SCHOOL_STUDENT",
+          };
+          if (form.userType === "SCHOOL_STUDENT") {
+            payload.studentDetails = {
+              schoolName: form.schoolName,
+              gradeLevel: parseInt(form.gradeLevel) || 0,
+              studentId: form.studentId,
+            };
+            payload.parentDetails = {
+              parentFirstName: form.parentFirstName,
+              parentLastName: form.parentLastName,
+              parentEmail: form.parentEmail,
+              parentPhone: form.parentPhone,
+              relation: form.relation,
+            };
+          }
+          await usersApi.registerGeneralUser(payload);
+        } else if (form.role === "BOTH") {
+          const payload = {
+            coreDetails: {
+              firstName: form.first_name,
+              lastName: form.last_name,
+              email: form.email,
+              password: form.password,
+            },
+            investorDetails: {
+              phone: form.phone,
+              address: form.address || "",
+              investmentPreferences: form.investmentPreferences,
+            },
+            isSchoolStudent: form.userType === "SCHOOL_STUDENT",
+          };
+          if (form.userType === "SCHOOL_STUDENT") {
+            payload.studentDetails = {
+              schoolName: form.schoolName,
+              gradeLevel: parseInt(form.gradeLevel) || 0,
+              studentId: form.studentId,
+            };
+            payload.parentDetails = {
+              parentFirstName: form.parentFirstName,
+              parentLastName: form.parentLastName,
+              parentEmail: form.parentEmail,
+              parentPhone: form.parentPhone,
+              relation: form.relation,
+            };
+          }
+          await usersApi.registerBoth(payload);
+        }
+      } else {
+        // Admin user creation
+        const payload = {
+          first_name: form.first_name,
+          last_name: form.last_name,
+          email: form.email,
+          password: form.password,
+          role: form.role.toLowerCase(),
+          user_type: "admin",
+        };
+        await usersApi.create(payload);
+      }
     }
     load();
   };
@@ -275,5 +504,21 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm,
     paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  sectionContainer: {
+    marginTop: spacing.md,
+    padding: spacing.sm,
+    backgroundColor: "#f9fafb",
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primary,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+    textTransform: "uppercase",
   },
 });

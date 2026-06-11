@@ -18,8 +18,12 @@ export default function BlockedUsersScreen() {
       const res = await usersApi.list({ search, per_page: 100 });
 
       const list = Array.isArray(res.data) ? res.data : (res.data?.data?.data || res.data?.data || []);
-      const blocked = list.filter((u) => (u.status || "").toLowerCase() === "inactive");
-      setUsers(blocked);
+      // Filter out admins/superadmins to only show regular users (General User, Investor, Both, Marketing, etc. if required)
+      const regularUsers = list.filter((u) => {
+        const role = (u.role || "").toLowerCase();
+        return role !== "admin" && role !== "superadmin";
+      });
+      setUsers(regularUsers);
     } catch (e) {
       console.warn(e);
     } finally {
@@ -38,24 +42,37 @@ export default function BlockedUsersScreen() {
 
   const unblock = async (u) => {
     try {
-      await usersApi.setStatus(u.id, "Active");
+      await usersApi.toggleStatus(u.id);
       load();
+      Alert.alert("Success", `${u.first_name || "User"} has been unblocked.`);
     } catch {
       Alert.alert("Error", "Could not unblock");
     }
   };
 
+  const handleBlockPress = (u) => {
+    setTarget(u);
+    setReason("");
+    setShowBlock(true);
+  };
+
   const submitBlock = async () => {
     try {
-      await usersApi.setStatus(target.id, "Inactive");
+      // Toggle to Inactive
+      await usersApi.toggleStatus(target.id);
       if (reason.trim()) {
-        await usersApi.blockReason({ user_id: target.id, reason });
+        try {
+          await usersApi.blockReason({ user_id: target.id, reason });
+        } catch (error) {
+          console.warn("Block reason endpoint failed or not implemented on backend:", error);
+        }
       }
       setShowBlock(false);
       setReason("");
       setTarget(null);
       load();
-    } catch {
+      Alert.alert("Success", "User has been blocked.");
+    } catch (e) {
       Alert.alert("Error", "Could not block");
     }
   };
@@ -63,7 +80,7 @@ export default function BlockedUsersScreen() {
   return (
     <Screen scroll={false}>
       <View style={styles.header}>
-        <Input label="Search blocked users" value={search} onChangeText={setSearch} />
+        <Input label="Search users" placeholder="Search by name, email..." value={search} onChangeText={setSearch} />
       </View>
 
       {loading ? (
@@ -72,21 +89,30 @@ export default function BlockedUsersScreen() {
         <FlatList
           data={users}
           keyExtractor={(u) => String(u.id)}
-          renderItem={({ item }) => (
-            <Card>
-              <Text style={styles.name}>{item.first_name} {item.last_name}</Text>
-              <Text style={styles.email}>{item.email}</Text>
-              <View style={styles.row}>
-                <Badge tone="danger">Blocked</Badge>
-                {item.role ? <Badge tone="info">{item.role}</Badge> : null}
-              </View>
-              <Button title="Unblock" variant="success" size="sm" onPress={() => unblock(item)} style={{ marginTop: spacing.sm }} />
-            </Card>
-          )}
+          renderItem={({ item }) => {
+            const isBlocked = (item.status || "Active").toLowerCase() === "inactive";
+            return (
+              <Card>
+                <Text style={styles.name}>{item.first_name} {item.last_name}</Text>
+                <Text style={styles.email}>{item.email}</Text>
+                <View style={styles.row}>
+                  <Badge tone={isBlocked ? "danger" : "success"}>
+                    {isBlocked ? "Blocked" : "Active"}
+                  </Badge>
+                  {item.role ? <Badge tone="info">{item.role}</Badge> : null}
+                </View>
+                {isBlocked ? (
+                  <Button title="Unblock" variant="success" size="sm" onPress={() => unblock(item)} style={{ marginTop: spacing.sm }} />
+                ) : (
+                  <Button title="Block" variant="danger" size="sm" onPress={() => handleBlockPress(item)} style={{ marginTop: spacing.sm }} />
+                )}
+              </Card>
+            );
+          }}
           contentContainerStyle={{ padding: spacing.md }}
           refreshing={refreshing}
           onRefresh={() => { setRefreshing(true); load(); }}
-          ListEmptyComponent={<EmptyState icon="🚫" title="No blocked users" subtitle="All users are currently active." />}
+          ListEmptyComponent={<EmptyState icon="users" title="No users found" />}
         />
       )}
 
@@ -102,9 +128,9 @@ export default function BlockedUsersScreen() {
         }
       >
         <Text style={{ color: colors.text, marginBottom: spacing.sm }}>
-          Block {target?.email}?
+          Provide a reason for blocking {target?.first_name} {target?.last_name} ({target?.email}):
         </Text>
-        <Input label="Reason (optional)" value={reason} onChangeText={setReason} multiline />
+        <Input label="Block Reason" placeholder="e.g. Terms of service violation..." value={reason} onChangeText={setReason} multiline />
       </Modal>
     </Screen>
   );

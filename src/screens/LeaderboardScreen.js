@@ -69,8 +69,8 @@ export default function LeaderboardScreen() {
             return (
               <Card>
                 <View style={styles.row}>
-                  {item.profile?.cover_image_url ? (
-                    <Image source={{ uri: item.profile.cover_image_url }} style={styles.rankImage} />
+                  {(item.profile?.profile_image_url || item.profile?.profile_image) ? (
+                    <Image source={{ uri: item.profile.profile_image_url || item.profile.profile_image }} style={styles.rankImage} />
                   ) : (
                     <Text style={styles.rank}>#{index + 1}</Text>
                   )}

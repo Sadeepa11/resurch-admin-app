@@ -6,9 +6,9 @@ import { colors, spacing } from "../theme/colors";
 
 const STATUSES = [
   { label: "All", value: "all" },
-  { label: "Active", value: "active" },
-  { label: "Inactive", value: "inactive" },
-  { label: "Closed", value: "closed" },
+  { label: "Pending", value: "pending" },
+  { label: "Approved", value: "approved" },
+  { label: "Rejected", value: "rejected" },
 ];
 
 export default function JobManagementScreen() {
@@ -72,28 +72,27 @@ export default function JobManagementScreen() {
           data={jobs}
           keyExtractor={(j) => String(j.id)}
           renderItem={({ item }) => {
-            const status = (item.status || "active").toLowerCase();
-            const tone = status === "active" ? "success" : status === "closed" ? "danger" : "warning";
+            const status = (item.status || "pending").toLowerCase();
+            const tone = status === "approved" ? "success" : status === "rejected" ? "danger" : "warning";
             return (
               <Card>
                 <View style={styles.row}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-                    <Text style={styles.company}>{item.company || ""}</Text>
+                    <Text style={styles.company}>{item.company_name || item.company || ""}</Text>
                   </View>
                   <Badge tone={tone}>{status}</Badge>
                 </View>
                 {item.location ? <Text style={styles.meta}>📍 {item.location}</Text> : null}
                 {item.salary ? <Text style={styles.meta}>💰 {item.salary}</Text> : null}
                 <View style={styles.actions}>
-                  <Button
-                    title={status === "active" ? "Deactivate" : "Activate"}
-                    variant={status === "active" ? "warning" : "success"}
-                    size="sm"
-                    onPress={() => setStatus(item, status === "active" ? "inactive" : "active")}
-                  />
-                  <Button title="Close" variant="outline" size="sm" onPress={() => setStatus(item, "closed")} />
-                  <Button title="Delete" variant="danger" size="sm" onPress={() => remove(item)} />
+                  {status === "pending" && (
+                    <>
+                      <Button title="Approve" variant="success" size="sm" onPress={() => setStatus(item, "approved")} />
+                      <Button title="Reject" variant="danger" size="sm" onPress={() => setStatus(item, "rejected")} />
+                    </>
+                  )}
+                  <Button title="Delete" variant="outline" size="sm" onPress={() => remove(item)} />
                 </View>
               </Card>
             );

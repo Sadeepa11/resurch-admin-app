@@ -15,10 +15,13 @@ export const usersApi = {
   create: (payload) => api.post("/users", payload),
   update: (id, payload) => api.put(`/users/${id}`, payload),
   remove: (id) => api.delete(`/users/${id}`),
+  registerInvestor: (payload) => api.post("/register/investor", payload),
+  registerGeneralUser: (payload) => api.post("/register/generaluser", payload),
+  registerBoth: (payload) => api.post("/register/both", payload),
 };
 
 export const innovationsApi = {
-  list: (params = {}) => api.get("/innovations", { params }),
+  list: (params = {}) => api.get("/innovation", { params }),
   setStatus: (id, status) => api.patch(`/innovations/${id}/status`, { status }),
   bulkStatus: (ids, status) => api.post("/innovations/bulk-status", { ids, status }),
   requestRevision: (id, payload) => api.post(`/admin/innovations/${id}/request-revision`, payload),
@@ -145,4 +148,10 @@ export const notificationsApi = {
 export const marketingApi = {
   // Reuses advertisement endpoints
   list: () => api.get("/admin/advertisements"),
+};
+
+export const studentVerificationApi = {
+  list: (params = {}) => api.get("/super-admin/student-verifications", { params }),
+  update: (id, payload) => api.put(`/super-admin/student-verifications/${id}`, payload),
+  remove: (id) => api.delete(`/super-admin/student-verifications/${id}`),
 };

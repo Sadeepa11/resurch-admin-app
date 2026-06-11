@@ -11,6 +11,7 @@ const PERMISSION_ITEMS = [
   { id: "all_users", label: "All Users", group: "User Management" },
   { id: "admin_users", label: "Admin Users", group: "User Management" },
   { id: "blocked_users", label: "Blocked Users", group: "User Management" },
+  { id: "student_verification", label: "Student Verification", group: "User Management" },
   { id: "video_validation", label: "Video Validation", group: "Innovation & Research" },
   { id: "video_upload_payments", label: "Video Upload Payments", group: "Innovation & Research" },
   { id: "research_papers", label: "Research Papers", group: "Innovation & Research" },
@@ -42,7 +43,7 @@ const ROLES = [
 
 const DEFAULT_PERMISSIONS = {
   manager: {
-    dashboard: true, all_users: true, blocked_users: true,
+    dashboard: true, all_users: true, blocked_users: true, student_verification: true,
     video_validation: true, video_upload_payments: true, research_papers: true,
     innovation_review: true, research_review: true, leaderboard: true,
     hub_cards: true, job_management: true, post_job: true,
@@ -51,7 +52,7 @@ const DEFAULT_PERMISSIONS = {
   },
   marketing: { dashboard: true, marketing: true, advertisements: true },
   admin: {
-    dashboard: true, all_users: true, blocked_users: true,
+    dashboard: true, all_users: true, blocked_users: true, student_verification: true,
     video_validation: true, research_papers: true, innovation_review: true,
     research_review: true, leaderboard: true,
     hub_cards: true, job_management: true, post_job: true,

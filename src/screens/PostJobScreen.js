@@ -50,12 +50,17 @@ export default function PostJobScreen() {
   };
 
   return (
-    <Screen scroll={false}>
+    <Screen scroll={false} padded={false}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 80}
       >
-        <ScrollView contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: spacing.md, paddingBottom: 120 }}
+          keyboardShouldPersistTaps="handled"
+        >
           <Card>
             <Text style={styles.title}>📝 Post a New Job</Text>
             <Input label="Job Title *" value={form.title} onChangeText={(v) => set("title", v)} autoCapitalize="words" />

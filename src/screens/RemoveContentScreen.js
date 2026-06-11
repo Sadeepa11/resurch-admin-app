@@ -5,7 +5,7 @@ import { removeContentApi } from "../api/endpoints";
 import { colors, spacing } from "../theme/colors";
 
 const TYPES = [
-  { label: "Innovations", value: "innovations",  listEndpoint: "/innovations",           deleteEndpoint: "/admin/innovations" },
+  { label: "Innovations", value: "innovations",  listEndpoint: "/innovation",           deleteEndpoint: "/admin/innovations" },
   { label: "Research",    value: "research",     listEndpoint: "/research",              deleteEndpoint: "/admin/research" },
   { label: "Jobs",        value: "jobs",         listEndpoint: "/admin/jobs",            deleteEndpoint: "/jobs" },
   { label: "Community",   value: "community",    listEndpoint: "/admin/community/posts", deleteEndpoint: "/admin/community/posts" },

@@ -142,8 +142,8 @@ function ResearchDetailModal({ visible, research, onClose, onStatusChange }) {
             </View>
           </View>
 
-          {research.pdf_url ? (
-            <TouchableOpacity style={modal.pdfBtn} onPress={() => Linking.openURL(research.pdf_url)}>
+          {research.document_url ? (
+            <TouchableOpacity style={modal.pdfBtn} onPress={() => Linking.openURL(research.document_url)}>
               <Text style={modal.pdfBtnText}>View PDF</Text>
             </TouchableOpacity>
           ) : null}
