@@ -13,14 +13,16 @@ import {
   Alert,
   TextInput,
 } from "react-native";
-import api from "../api/api";
+import { innovationsApi } from "../api/endpoints";
 
-const STATUS_FILTERS = ["all", "pending", "active", "inactive"];
+const STATUS_FILTERS = ["all", "pending", "active", "inactive", "revision_requested", "permanently_rejected"];
 
 const STATUS_COLORS = {
-  pending:  { bg: "#fef3c7", text: "#92400e", dot: "#f59e0b" },
-  active:   { bg: "#d1fae5", text: "#065f46", dot: "#22c55e" },
-  inactive: { bg: "#fee2e2", text: "#991b1b", dot: "#ef4444" },
+  pending:              { bg: "#fef3c7", text: "#92400e",  dot: "#f59e0b" },
+  active:               { bg: "#d1fae5", text: "#065f46",  dot: "#22c55e" },
+  inactive:             { bg: "#fee2e2", text: "#991b1b",  dot: "#ef4444" },
+  revision_requested:   { bg: "#fff7ed", text: "#9a3412",  dot: "#f97316" },
+  permanently_rejected: { bg: "#f3e8ff", text: "#5b21b6",  dot: "#7c3aed" },
 };
 
 function StatusBadge({ status }) {
@@ -35,37 +37,70 @@ function StatusBadge({ status }) {
 
 function VideoDetailModal({ visible, video, onClose, onStatusChange }) {
   const [updating, setUpdating] = useState(false);
+  const [actionMode, setActionMode] = useState(null); // 'revision' | 'perm_reject'
+  const [reason, setReason] = useState("");
+  const [blockUser, setBlockUser] = useState(false);
+
+  const reset = () => { setActionMode(null); setReason(""); setBlockUser(false); };
+  const handleClose = () => { reset(); onClose(); };
 
   const handleStatus = async (newStatus) => {
     setUpdating(true);
     try {
-      console.log(`Attempting to update status for video ${video.id} to ${newStatus}`);
-      const res = await api.patch(`/innovations/${video.id}/status`, { status: newStatus });
-      console.log("Status update response:", JSON.stringify(res.data, null, 2));
-      
+      await innovationsApi.setStatus(video.id, newStatus);
       onStatusChange(video.id, newStatus);
+      handleClose();
+    } catch (e) {
+      Alert.alert("Error", e.response?.data?.message || "Failed to update status.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleRevision = async () => {
+    if (!reason.trim()) { Alert.alert("Required", "Please enter a reason for the revision request."); return; }
+    setUpdating(true);
+    try {
+      await innovationsApi.requestRevision(video.id, { reason: reason.trim(), block: blockUser });
+      onStatusChange(video.id, "revision_requested");
+      reset();
       onClose();
     } catch (e) {
-      console.warn("Status update error:", JSON.stringify(e.response?.data || e, null, 2));
-      Alert.alert("Error", e.response?.data?.message || "Failed to update status. Please try again.");
+      Alert.alert("Error", e.response?.data?.message || "Failed to request revision.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handlePermReject = async () => {
+    if (!reason.trim()) { Alert.alert("Required", "Please enter a reason for permanently rejecting."); return; }
+    setUpdating(true);
+    try {
+      await innovationsApi.permanentlyReject(video.id, { reason: reason.trim() });
+      onStatusChange(video.id, "permanently_rejected");
+      reset();
+      onClose();
+    } catch (e) {
+      Alert.alert("Error", e.response?.data?.message || "Failed to permanently reject.");
     } finally {
       setUpdating(false);
     }
   };
 
   if (!video) return null;
+  const isPermanent = video.status === "permanently_rejected";
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <View style={modal.container}>
         <View style={modal.header}>
           <Text style={modal.title}>Video Details</Text>
-          <TouchableOpacity style={modal.closeBtn} onPress={onClose}>
+          <TouchableOpacity style={modal.closeBtn} onPress={handleClose}>
             <Text style={modal.closeText}>✕</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={modal.body} showsVerticalScrollIndicator={false}>
+        <ScrollView style={modal.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {video.thumbnail ? (
             <Image source={{ uri: video.thumbnail }} style={modal.thumbnail} resizeMode="cover" />
           ) : (
@@ -89,9 +124,7 @@ function VideoDetailModal({ visible, video, onClose, onStatusChange }) {
           <View style={modal.grid}>
             <View style={modal.gridItem}>
               <Text style={modal.gridLabel}>Uploader</Text>
-              <Text style={modal.gridValue}>
-                {video.first_name} {video.last_name}
-              </Text>
+              <Text style={modal.gridValue}>{video.first_name} {video.last_name}</Text>
             </View>
             <View style={modal.gridItem}>
               <Text style={modal.gridLabel}>Category</Text>
@@ -108,22 +141,85 @@ function VideoDetailModal({ visible, video, onClose, onStatusChange }) {
           </View>
 
           <Text style={modal.actionLabel}>Update Status</Text>
-          <View style={modal.actionRow}>
-            <TouchableOpacity
-              style={[modal.actionBtn, modal.approveBtn, updating && modal.disabledBtn]}
-              onPress={() => handleStatus("active")}
-              disabled={updating || video.status === "active"}
-            >
-              {updating ? <ActivityIndicator color="#fff" size="small" /> : <Text style={modal.actionBtnText}>Approve</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[modal.actionBtn, modal.rejectBtn, updating && modal.disabledBtn]}
-              onPress={() => handleStatus("inactive")}
-              disabled={updating || video.status === "inactive"}
-            >
-              <Text style={modal.actionBtnText}>Reject</Text>
-            </TouchableOpacity>
-          </View>
+
+          {actionMode ? (
+            <View style={modal.reasonBox}>
+              <Text style={modal.reasonTitle}>
+                {actionMode === "revision" ? "Request Revision" : "Permanently Reject"}
+              </Text>
+              <TextInput
+                style={modal.reasonInput}
+                value={reason}
+                onChangeText={setReason}
+                placeholder="Enter reason..."
+                placeholderTextColor="#98a2b3"
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+              {actionMode === "revision" && (
+                <TouchableOpacity style={modal.checkRow} onPress={() => setBlockUser((b) => !b)}>
+                  <View style={[modal.checkbox, blockUser && modal.checkboxChecked]}>
+                    {blockUser ? <Text style={modal.checkmark}>✓</Text> : null}
+                  </View>
+                  <Text style={modal.checkLabel}>Block user from further uploads</Text>
+                </TouchableOpacity>
+              )}
+              <View style={[modal.actionRow, { marginTop: 14 }]}>
+                <TouchableOpacity
+                  style={[modal.actionBtn, modal.cancelBtn]}
+                  onPress={reset}
+                  disabled={updating}
+                >
+                  <Text style={[modal.actionBtnText, { color: "#667085" }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[modal.actionBtn, actionMode === "revision" ? modal.revisionBtn : modal.permRejectBtn, updating && modal.disabledBtn]}
+                  onPress={actionMode === "revision" ? handleRevision : handlePermReject}
+                  disabled={updating}
+                >
+                  {updating
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={modal.actionBtnText}>Confirm</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={modal.actionsBox}>
+              <View style={modal.actionRow}>
+                <TouchableOpacity
+                  style={[modal.actionBtn, modal.approveBtn, (updating || video.status === "active") && modal.disabledBtn]}
+                  onPress={() => handleStatus("active")}
+                  disabled={updating || video.status === "active" || isPermanent}
+                >
+                  {updating ? <ActivityIndicator color="#fff" size="small" /> : <Text style={modal.actionBtnText}>Approve</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[modal.actionBtn, modal.rejectBtn, (updating || video.status === "inactive") && modal.disabledBtn]}
+                  onPress={() => handleStatus("inactive")}
+                  disabled={updating || video.status === "inactive" || isPermanent}
+                >
+                  <Text style={modal.actionBtnText}>Reject</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={[modal.actionRow, { marginTop: 10 }]}>
+                <TouchableOpacity
+                  style={[modal.actionBtn, modal.revisionBtn, (updating || video.status === "revision_requested" || isPermanent) && modal.disabledBtn]}
+                  onPress={() => setActionMode("revision")}
+                  disabled={updating || video.status === "revision_requested" || isPermanent}
+                >
+                  <Text style={modal.actionBtnText}>Request Revision</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[modal.actionBtn, modal.permRejectBtn, (updating || isPermanent) && modal.disabledBtn]}
+                  onPress={() => setActionMode("perm_reject")}
+                  disabled={updating || isPermanent}
+                >
+                  <Text style={modal.actionBtnText}>Perm. Reject</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </ScrollView>
       </View>
     </Modal>
@@ -145,19 +241,11 @@ export default function VideoValidationScreen() {
     try {
       let allVideos = [];
       if (filterStatus === "all") {
-        const [pendingRes, activeRes, inactiveRes] = await Promise.all([
-          api.get("/innovation?status=pending&show_all=true"),
-          api.get("/innovation?status=active&show_all=true"),
-          api.get("/innovation?status=inactive&show_all=true"),
-        ]);
-        allVideos = [
-          ...(pendingRes.data.data.data || []),
-          ...(activeRes.data.data.data || []),
-          ...(inactiveRes.data.data.data || []),
-        ];
+        const res = await innovationsApi.list({ show_all: true });
+        allVideos = res.data?.data?.data || res.data?.data || [];
       } else {
-        const res = await api.get(`/innovation?status=${filterStatus}&show_all=true`);
-        allVideos = res.data.data.data || [];
+        const res = await innovationsApi.list({ status: filterStatus, show_all: true });
+        allVideos = res.data?.data?.data || res.data?.data || [];
       }
       setVideos(allVideos);
     } catch (e) {
@@ -380,10 +468,25 @@ const modal = StyleSheet.create({
   gridLabel: { fontSize: 11, fontWeight: "600", color: "#98a2b3", marginBottom: 2 },
   gridValue: { fontSize: 14, fontWeight: "600", color: "#101828" },
   actionLabel: { fontSize: 13, fontWeight: "700", color: "#344054", paddingHorizontal: 20, marginBottom: 10 },
-  actionRow: { flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingBottom: 40 },
-  actionBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
+  actionsBox: { paddingHorizontal: 20, paddingBottom: 40 },
+  actionRow: { flexDirection: "row", gap: 10 },
+  actionBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   approveBtn: { backgroundColor: "#22c55e" },
   rejectBtn: { backgroundColor: "#ef4444" },
-  disabledBtn: { opacity: 0.6 },
-  actionBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  revisionBtn: { backgroundColor: "#f59e0b" },
+  permRejectBtn: { backgroundColor: "#7c3aed" },
+  cancelBtn: { backgroundColor: "#f2f4f7" },
+  disabledBtn: { opacity: 0.45 },
+  actionBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  reasonBox: { paddingHorizontal: 20, paddingBottom: 40 },
+  reasonTitle: { fontSize: 14, fontWeight: "700", color: "#344054", marginBottom: 10 },
+  reasonInput: {
+    borderWidth: 1, borderColor: "#e4e7ec", borderRadius: 10,
+    padding: 12, fontSize: 13, color: "#101828", minHeight: 90,
+  },
+  checkRow: { flexDirection: "row", alignItems: "center", marginTop: 12, gap: 10 },
+  checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 2, borderColor: "#d0d5dd", alignItems: "center", justifyContent: "center" },
+  checkboxChecked: { backgroundColor: "#dc2626", borderColor: "#dc2626" },
+  checkmark: { color: "#fff", fontSize: 11, fontWeight: "800" },
+  checkLabel: { fontSize: 13, color: "#344054", flex: 1 },
 });

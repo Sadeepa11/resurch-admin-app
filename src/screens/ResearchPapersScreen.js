@@ -14,14 +14,16 @@ import {
   TextInput,
   Linking,
 } from "react-native";
-import api from "../api/api";
+import { researchApi } from "../api/endpoints";
 
-const STATUS_FILTERS = ["all", "pending", "approved", "rejected"];
+const STATUS_FILTERS = ["all", "pending", "approved", "rejected", "revision_requested", "permanently_rejected"];
 
 const STATUS_COLORS = {
-  pending:  { bg: "#fef3c7", text: "#92400e", dot: "#f59e0b" },
-  approved: { bg: "#d1fae5", text: "#065f46", dot: "#22c55e" },
-  rejected: { bg: "#fee2e2", text: "#991b1b", dot: "#ef4444" },
+  pending:              { bg: "#fef3c7", text: "#92400e",  dot: "#f59e0b" },
+  approved:             { bg: "#d1fae5", text: "#065f46",  dot: "#22c55e" },
+  rejected:             { bg: "#fee2e2", text: "#991b1b",  dot: "#ef4444" },
+  revision_requested:   { bg: "#fff7ed", text: "#9a3412",  dot: "#f97316" },
+  permanently_rejected: { bg: "#f3e8ff", text: "#5b21b6",  dot: "#7c3aed" },
 };
 
 function StatusBadge({ status }) {
@@ -36,35 +38,71 @@ function StatusBadge({ status }) {
 
 function ResearchDetailModal({ visible, research, onClose, onStatusChange }) {
   const [updating, setUpdating] = useState(false);
+  const [actionMode, setActionMode] = useState(null); // 'revision' | 'perm_reject'
+  const [reason, setReason] = useState("");
+  const [blockUser, setBlockUser] = useState(false);
+
+  const reset = () => { setActionMode(null); setReason(""); setBlockUser(false); };
+  const handleClose = () => { reset(); onClose(); };
 
   const handleStatus = async (newStatus) => {
     setUpdating(true);
     try {
-      await api.put(`/research/${research.id}/status`, { status: newStatus });
+      await researchApi.setStatus(research.id, newStatus);
       onStatusChange(research.id, newStatus);
+      handleClose();
+    } catch (e) {
+      Alert.alert("Error", e.response?.data?.message || "Failed to update status.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleRevision = async () => {
+    if (!reason.trim()) { Alert.alert("Required", "Please enter a reason for the revision request."); return; }
+    setUpdating(true);
+    try {
+      await researchApi.requestRevision(research.id, { reason: reason.trim(), block: blockUser });
+      onStatusChange(research.id, "revision_requested");
+      reset();
       onClose();
     } catch (e) {
-      Alert.alert("Error", "Failed to update status. Please try again.");
+      Alert.alert("Error", e.response?.data?.message || "Failed to request revision.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handlePermReject = async () => {
+    if (!reason.trim()) { Alert.alert("Required", "Please enter a reason for permanently rejecting."); return; }
+    setUpdating(true);
+    try {
+      await researchApi.permanentlyReject(research.id, { reason: reason.trim() });
+      onStatusChange(research.id, "permanently_rejected");
+      reset();
+      onClose();
+    } catch (e) {
+      Alert.alert("Error", e.response?.data?.message || "Failed to permanently reject.");
     } finally {
       setUpdating(false);
     }
   };
 
   if (!research) return null;
-
   const researcher = research.innovator || {};
+  const isPermanent = research.status === "permanently_rejected";
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <View style={modal.container}>
         <View style={modal.header}>
           <Text style={modal.title}>Research Details</Text>
-          <TouchableOpacity style={modal.closeBtn} onPress={onClose}>
+          <TouchableOpacity style={modal.closeBtn} onPress={handleClose}>
             <Text style={modal.closeText}>✕</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={modal.body} showsVerticalScrollIndicator={false}>
+        <ScrollView style={modal.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {research.thumbnail ? (
             <Image source={{ uri: research.thumbnail }} style={modal.thumbnail} resizeMode="contain" />
           ) : (
@@ -88,9 +126,7 @@ function ResearchDetailModal({ visible, research, onClose, onStatusChange }) {
           <View style={modal.grid}>
             <View style={modal.gridItem}>
               <Text style={modal.gridLabel}>Researcher</Text>
-              <Text style={modal.gridValue}>
-                {researcher.first_name} {researcher.last_name}
-              </Text>
+              <Text style={modal.gridValue}>{researcher.first_name} {researcher.last_name}</Text>
             </View>
             <View style={modal.gridItem}>
               <Text style={modal.gridLabel}>Category</Text>
@@ -107,31 +143,87 @@ function ResearchDetailModal({ visible, research, onClose, onStatusChange }) {
           </View>
 
           {research.pdf_url ? (
-            <TouchableOpacity
-              style={modal.pdfBtn}
-              onPress={() => Linking.openURL(research.pdf_url)}
-            >
+            <TouchableOpacity style={modal.pdfBtn} onPress={() => Linking.openURL(research.pdf_url)}>
               <Text style={modal.pdfBtnText}>View PDF</Text>
             </TouchableOpacity>
           ) : null}
 
           <Text style={modal.actionLabel}>Update Status</Text>
-          <View style={modal.actionRow}>
-            <TouchableOpacity
-              style={[modal.actionBtn, modal.approveBtn, (updating || research.status === "approved") && modal.disabledBtn]}
-              onPress={() => handleStatus("approved")}
-              disabled={updating || research.status === "approved"}
-            >
-              {updating ? <ActivityIndicator color="#fff" size="small" /> : <Text style={modal.actionBtnText}>Approve</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[modal.actionBtn, modal.rejectBtn, (updating || research.status === "rejected") && modal.disabledBtn]}
-              onPress={() => handleStatus("rejected")}
-              disabled={updating || research.status === "rejected"}
-            >
-              <Text style={modal.actionBtnText}>Reject</Text>
-            </TouchableOpacity>
-          </View>
+
+          {actionMode ? (
+            <View style={modal.reasonBox}>
+              <Text style={modal.reasonTitle}>
+                {actionMode === "revision" ? "Request Revision" : "Permanently Reject"}
+              </Text>
+              <TextInput
+                style={modal.reasonInput}
+                value={reason}
+                onChangeText={setReason}
+                placeholder="Enter reason..."
+                placeholderTextColor="#98a2b3"
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+              {actionMode === "revision" && (
+                <TouchableOpacity style={modal.checkRow} onPress={() => setBlockUser((b) => !b)}>
+                  <View style={[modal.checkbox, blockUser && modal.checkboxChecked]}>
+                    {blockUser ? <Text style={modal.checkmark}>✓</Text> : null}
+                  </View>
+                  <Text style={modal.checkLabel}>Block user from further uploads</Text>
+                </TouchableOpacity>
+              )}
+              <View style={[modal.actionRow, { marginTop: 14 }]}>
+                <TouchableOpacity style={[modal.actionBtn, modal.cancelBtn]} onPress={reset} disabled={updating}>
+                  <Text style={[modal.actionBtnText, { color: "#667085" }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[modal.actionBtn, actionMode === "revision" ? modal.revisionBtn : modal.permRejectBtn, updating && modal.disabledBtn]}
+                  onPress={actionMode === "revision" ? handleRevision : handlePermReject}
+                  disabled={updating}
+                >
+                  {updating
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={modal.actionBtnText}>Confirm</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={modal.actionsBox}>
+              <View style={modal.actionRow}>
+                <TouchableOpacity
+                  style={[modal.actionBtn, modal.approveBtn, (updating || research.status === "approved") && modal.disabledBtn]}
+                  onPress={() => handleStatus("approved")}
+                  disabled={updating || research.status === "approved" || isPermanent}
+                >
+                  {updating ? <ActivityIndicator color="#fff" size="small" /> : <Text style={modal.actionBtnText}>Approve</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[modal.actionBtn, modal.rejectBtn, (updating || research.status === "rejected") && modal.disabledBtn]}
+                  onPress={() => handleStatus("rejected")}
+                  disabled={updating || research.status === "rejected" || isPermanent}
+                >
+                  <Text style={modal.actionBtnText}>Reject</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={[modal.actionRow, { marginTop: 10 }]}>
+                <TouchableOpacity
+                  style={[modal.actionBtn, modal.revisionBtn, (updating || research.status === "revision_requested" || isPermanent) && modal.disabledBtn]}
+                  onPress={() => setActionMode("revision")}
+                  disabled={updating || research.status === "revision_requested" || isPermanent}
+                >
+                  <Text style={modal.actionBtnText}>Request Revision</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[modal.actionBtn, modal.permRejectBtn, (updating || isPermanent) && modal.disabledBtn]}
+                  onPress={() => setActionMode("perm_reject")}
+                  disabled={updating || isPermanent}
+                >
+                  <Text style={modal.actionBtnText}>Perm. Reject</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </ScrollView>
       </View>
     </Modal>
@@ -153,19 +245,11 @@ export default function ResearchPapersScreen() {
     try {
       let allResearches = [];
       if (filterStatus === "all") {
-        const [pendingRes, approvedRes, rejectedRes] = await Promise.all([
-          api.get("/research?status=pending"),
-          api.get("/research?status=approved"),
-          api.get("/research?status=rejected"),
-        ]);
-        allResearches = [
-          ...(pendingRes.data.data.data || []),
-          ...(approvedRes.data.data.data || []),
-          ...(rejectedRes.data.data.data || []),
-        ];
+        const res = await researchApi.list({ show_all: true });
+        allResearches = res.data?.data?.data || res.data?.data || [];
       } else {
-        const res = await api.get(`/research?status=${filterStatus}`);
-        allResearches = res.data.data.data || [];
+        const res = await researchApi.list({ status: filterStatus, show_all: true });
+        allResearches = res.data?.data?.data || res.data?.data || [];
       }
       setResearches(allResearches);
     } catch (e) {
@@ -379,10 +463,25 @@ const modal = StyleSheet.create({
   },
   pdfBtnText: { fontSize: 14, fontWeight: "700", color: "#dc2626" },
   actionLabel: { fontSize: 13, fontWeight: "700", color: "#344054", paddingHorizontal: 20, marginBottom: 10 },
-  actionRow: { flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingBottom: 40 },
-  actionBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
+  actionsBox: { paddingHorizontal: 20, paddingBottom: 40 },
+  actionRow: { flexDirection: "row", gap: 10 },
+  actionBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   approveBtn: { backgroundColor: "#22c55e" },
   rejectBtn: { backgroundColor: "#ef4444" },
-  disabledBtn: { opacity: 0.5 },
-  actionBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  revisionBtn: { backgroundColor: "#f59e0b" },
+  permRejectBtn: { backgroundColor: "#7c3aed" },
+  cancelBtn: { backgroundColor: "#f2f4f7" },
+  disabledBtn: { opacity: 0.45 },
+  actionBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  reasonBox: { paddingHorizontal: 20, paddingBottom: 40 },
+  reasonTitle: { fontSize: 14, fontWeight: "700", color: "#344054", marginBottom: 10 },
+  reasonInput: {
+    borderWidth: 1, borderColor: "#e4e7ec", borderRadius: 10,
+    padding: 12, fontSize: 13, color: "#101828", minHeight: 90,
+  },
+  checkRow: { flexDirection: "row", alignItems: "center", marginTop: 12, gap: 10 },
+  checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 2, borderColor: "#d0d5dd", alignItems: "center", justifyContent: "center" },
+  checkboxChecked: { backgroundColor: "#dc2626", borderColor: "#dc2626" },
+  checkmark: { color: "#fff", fontSize: 11, fontWeight: "800" },
+  checkLabel: { fontSize: 13, color: "#344054", flex: 1 },
 });

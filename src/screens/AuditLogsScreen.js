@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from "react-native";
 import { Screen, Card, Badge, EmptyState } from "../components/ui";
 import { auditLogsApi } from "../api/endpoints";
 import { colors, spacing } from "../theme/colors";
@@ -21,16 +21,18 @@ export default function AuditLogsScreen() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
 
   const load = useCallback(async (p = 1, replace = true) => {
+    setError("");
     try {
       const res = await auditLogsApi.list(p);
       const data = res.data?.data;
-      const items = data?.data || data || [];
+      const items = data?.data || (Array.isArray(data) ? data : []);
       setHasMore(data?.last_page ? p < data.last_page : false);
       setLogs((prev) => (replace ? items : [...prev, ...items]));
     } catch (e) {
-      console.warn(e);
+      setError("Failed to load audit logs. Pull down to retry.");
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -50,6 +52,14 @@ export default function AuditLogsScreen() {
 
   return (
     <Screen scroll={false}>
+      {error ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={() => load(1, true)}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
       {loading ? (
         <EmptyState loading />
       ) : (
@@ -96,4 +106,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 13, fontWeight: "700", color: colors.text },
   sub: { fontSize: 11, color: colors.textMuted, marginTop: 4 },
   date: { fontSize: 10, color: colors.textLight },
+  errorBox: { margin: spacing.md, padding: spacing.sm, backgroundColor: "#fee2e2", borderRadius: 8, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  errorText: { fontSize: 13, color: "#991b1b", flex: 1 },
+  retryText: { fontSize: 13, fontWeight: "700", color: "#dc2626", marginLeft: 8 },
 });

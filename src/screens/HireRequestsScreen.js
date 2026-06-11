@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList } from "react-native";
-import { Screen, Card, Input, Badge, EmptyState, Select } from "../components/ui";
+import { View, Text, StyleSheet, FlatList, Alert } from "react-native";
+import { Screen, Card, Button, Input, Badge, EmptyState, Select } from "../components/ui";
 import { hireRequestsApi } from "../api/endpoints";
 import { colors, spacing } from "../theme/colors";
 
@@ -17,6 +17,7 @@ export default function HireRequestsScreen() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [busyId, setBusyId] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -36,6 +37,47 @@ export default function HireRequestsScreen() {
     return () => clearTimeout(t);
   }, [load]);
 
+  const handleApprove = (id) => {
+    Alert.alert("Approve Request", "Approve this hire request?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Approve",
+        onPress: async () => {
+          setBusyId(id);
+          try {
+            await hireRequestsApi.approve(id);
+            setItems((prev) => prev.map((it) => it.id === id ? { ...it, status: "approved" } : it));
+          } catch {
+            Alert.alert("Error", "Failed to approve. Please try again.");
+          } finally {
+            setBusyId(null);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleReject = (id) => {
+    Alert.alert("Reject Request", "Reject this hire request?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Reject",
+        style: "destructive",
+        onPress: async () => {
+          setBusyId(id);
+          try {
+            await hireRequestsApi.reject(id);
+            setItems((prev) => prev.map((it) => it.id === id ? { ...it, status: "rejected" } : it));
+          } catch {
+            Alert.alert("Error", "Failed to reject. Please try again.");
+          } finally {
+            setBusyId(null);
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <Screen scroll={false}>
       <View style={styles.header}>
@@ -52,6 +94,7 @@ export default function HireRequestsScreen() {
           renderItem={({ item }) => {
             const st = (item.status || "pending").toLowerCase();
             const tone = st === "approved" ? "success" : st === "rejected" ? "danger" : "warning";
+            const isBusy = busyId === item.id;
             return (
               <Card>
                 <View style={styles.row}>
@@ -67,6 +110,28 @@ export default function HireRequestsScreen() {
                 {item.message ? <Text style={styles.message}>{item.message}</Text> : null}
                 {item.budget ? <Text style={styles.meta}>💰 Budget: {item.budget}</Text> : null}
                 <Text style={styles.date}>{item.created_at ? new Date(item.created_at).toLocaleString() : ""}</Text>
+                {st === "pending" && (
+                  <View style={styles.actions}>
+                    <Button
+                      title="Approve"
+                      variant="success"
+                      size="sm"
+                      loading={isBusy}
+                      disabled={isBusy}
+                      onPress={() => handleApprove(item.id)}
+                      style={styles.actionBtn}
+                    />
+                    <Button
+                      title="Reject"
+                      variant="danger"
+                      size="sm"
+                      loading={isBusy}
+                      disabled={isBusy}
+                      onPress={() => handleReject(item.id)}
+                      style={styles.actionBtn}
+                    />
+                  </View>
+                )}
               </Card>
             );
           }}
@@ -88,4 +153,6 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, color: colors.textMuted, marginTop: 6 },
   message: { fontSize: 13, color: colors.text, marginTop: spacing.sm, lineHeight: 19 },
   date: { fontSize: 10, color: colors.textLight, marginTop: 6 },
+  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
+  actionBtn: { flex: 1 },
 });

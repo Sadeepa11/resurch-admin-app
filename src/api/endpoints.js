@@ -2,6 +2,7 @@ import api from "./api";
 
 export const dashboardApi = {
   stats: (range = "7days") => api.get(`/super-admin/dashboard/stats?range=${range}`),
+  sidebarCounts: () => api.get("/super-admin/dashboard/sidebar-counts"),
 };
 
 export const usersApi = {
@@ -62,6 +63,8 @@ export const membershipsApi = {
 
 export const investorZoneApi = {
   list: (params = {}) => api.get("/admin/investorzone/posts", { params }),
+  approve: (id) => api.patch(`/admin/investorzone/posts/${id}/approve`),
+  reject: (id) => api.patch(`/admin/investorzone/posts/${id}/reject`),
   remove: (id) => api.delete(`/admin/investorzone/posts/${id}`),
 };
 
@@ -79,6 +82,8 @@ export const jobsApi = {
 
 export const hireRequestsApi = {
   list: (params = {}) => api.get("/super-admin/hire-requests", { params }),
+  approve: (id) => api.patch(`/super-admin/hire-requests/${id}/approve`),
+  reject: (id) => api.patch(`/super-admin/hire-requests/${id}/reject`),
 };
 
 export const paymentsApi = {
@@ -126,6 +131,15 @@ export const hubCardsApi = {
 export const removeContentApi = {
   list: (endpoint, params = {}) => api.get(endpoint, { params }),
   remove: (endpoint) => api.delete(endpoint),
+};
+
+export const notificationsApi = {
+  list: (params = {}) => api.get("/super-admin/notifications", { params }),
+  unreadCount: () => api.get("/super-admin/notifications", { params: { per_page: 1 } }),
+  markRead: (id) => api.put(`/super-admin/notifications/${id}/read`),
+  markAllRead: () => api.put("/super-admin/notifications/read-all"),
+  remove: (id) => api.delete(`/super-admin/notifications/${id}`),
+  clearRead: () => api.delete("/super-admin/notifications/clear-read"),
 };
 
 export const marketingApi = {

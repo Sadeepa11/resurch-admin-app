@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createDrawerNavigator } from "@react-navigation/drawer";
@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../context/AuthContext";
 import { colors, spacing, radius } from "../theme/colors";
+import { dashboardApi, notificationsApi } from "../api/endpoints";
 
 const LOGO = require("../../assets/logo-source.png");
 
@@ -43,6 +44,7 @@ import PaymentsRevenueScreen from "../screens/PaymentsRevenueScreen";
 import TransactionAnalyticsScreen from "../screens/TransactionAnalyticsScreen";
 import AuditLogsScreen from "../screens/AuditLogsScreen";
 import RolePermissionsScreen from "../screens/RolePermissionsScreen";
+import NotificationsScreen from "../screens/NotificationsScreen";
 
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -66,9 +68,9 @@ const MENU_GROUPS = [
   {
     label: "Innovation & Research",
     items: [
-      { name: "VideoValidation", icon: "videocam", title: "Video Validation", perm: "video_validation" },
+      { name: "VideoValidation", icon: "videocam", title: "Video Validation", perm: "video_validation", badgeKey: "video_validation" },
       { name: "VideoUploadPayments", icon: "cash", title: "Video Upload Payments", perm: "video_upload_payments" },
-      { name: "ResearchPapers", icon: "document-text", title: "Research Papers", perm: "research_papers" },
+      { name: "ResearchPapers", icon: "document-text", title: "Research Papers", perm: "research_papers", badgeKey: "research_papers" },
       { name: "InnovationReview", icon: "bulb", title: "Innovation Reviews", perm: "innovation_review" },
       { name: "ResearchReview", icon: "book", title: "Research Reviews", perm: "research_review" },
       { name: "Leaderboard", icon: "trophy", title: "Leaderboard", perm: "leaderboard" },
@@ -80,16 +82,16 @@ const MENU_GROUPS = [
     label: "Site Management",
     items: [
       { name: "HubCards", icon: "grid", title: "Home Hub Cards", perm: "hub_cards" },
-      { name: "JobManagement", icon: "briefcase", title: "Job Management", perm: "job_management" },
+      { name: "JobManagement", icon: "briefcase", title: "Job Management", perm: "job_management", badgeKey: "job_management" },
       { name: "PostJob", icon: "add-circle", title: "Post New Job", perm: "post_job" },
     ],
   },
   {
     label: "Community & Social",
     items: [
-      { name: "CommunityManagement", icon: "chatbubbles", title: "Community Posts", perm: "community_management" },
-      { name: "InvestorZone", icon: "trending-up", title: "Investor Zone", perm: "investor_zone_management" },
-      { name: "HireRequests", icon: "hand-right", title: "Hire Requests", perm: "hire_requests" },
+      { name: "CommunityManagement", icon: "chatbubbles", title: "Community Posts", perm: "community_management", badgeKey: "community_management" },
+      { name: "InvestorZone", icon: "trending-up", title: "Investor Zone", perm: "investor_zone_management", badgeKey: "investor_zone" },
+      { name: "HireRequests", icon: "hand-right", title: "Hire Requests", perm: "hire_requests", badgeKey: "hire_requests" },
     ],
   },
   {
@@ -140,6 +142,7 @@ const SCREEN_COMPONENTS = {
   TransactionAnalytics: TransactionAnalyticsScreen,
   AuditLogs: AuditLogsScreen,
   RolePermissions: RolePermissionsScreen,
+  Notifications: NotificationsScreen,
 };
 
 const DEFAULT_PERMISSIONS = {
@@ -175,6 +178,19 @@ function getAllowedItems(role, isSuperAdmin) {
 
 function CustomDrawerContent(props) {
   const { user, logout, role, isSuperAdmin } = useAuth();
+  const [counts, setCounts] = useState({});
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const res = await dashboardApi.sidebarCounts();
+        if (res.data?.data) setCounts(res.data.data);
+      } catch (_) {}
+    };
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () =>
     Alert.alert("Sign out", "Are you sure?", [
@@ -226,6 +242,7 @@ function CustomDrawerContent(props) {
               <Text style={drawerStyles.groupLabel}>{group.label}</Text>
               {allowed.map((item) => {
                 const focused = props.state.routeNames[props.state.index] === item.name;
+                const badgeCount = item.badgeKey ? (counts[item.badgeKey] || 0) : 0;
                 return (
                   <TouchableOpacity
                     key={item.name}
@@ -243,9 +260,17 @@ function CustomDrawerContent(props) {
                         item.danger && { color: colors.danger },
                         focused && { color: colors.primary, fontWeight: "700" },
                       ]}
+                      numberOfLines={1}
                     >
                       {item.title}
                     </Text>
+                    {badgeCount > 0 && (
+                      <View style={drawerStyles.badge}>
+                        <Text style={drawerStyles.badgeText}>
+                          {badgeCount > 99 ? "99+" : badgeCount}
+                        </Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -262,19 +287,52 @@ function CustomDrawerContent(props) {
   );
 }
 
+function BellButton({ navigation, unreadCount }) {
+  return (
+    <TouchableOpacity
+      onPress={() => navigation.navigate("Notifications")}
+      style={styles.bellBtn}
+    >
+      <Ionicons name="notifications-outline" size={22} color={colors.text} />
+      {unreadCount > 0 && (
+        <View style={styles.bellBadge}>
+          <Text style={styles.bellBadgeText}>{unreadCount > 99 ? "99+" : unreadCount}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
 function AdminDrawer() {
   const { role, isSuperAdmin } = useAuth();
   const allowed = getAllowedItems(role, isSuperAdmin);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await notificationsApi.unreadCount();
+        const count = res.data?.unread_count ?? 0;
+        setUnreadCount(count);
+      } catch (_) {}
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
         drawerStyle: { width: 290 },
         headerStyle: { backgroundColor: "#fff" },
         headerTitleStyle: { fontSize: 16, fontWeight: "700", color: colors.text },
         headerTintColor: colors.primary,
-      }}
+        headerRight: () => (
+          <BellButton navigation={navigation} unreadCount={unreadCount} />
+        ),
+      })}
     >
       {allowed.map((item) => (
         <Drawer.Screen
@@ -284,6 +342,11 @@ function AdminDrawer() {
           options={{ title: item.title }}
         />
       ))}
+      <Drawer.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{ title: "Notifications", drawerItemStyle: { display: "none" } }}
+      />
     </Drawer.Navigator>
   );
 }
@@ -361,8 +424,15 @@ const drawerStyles = StyleSheet.create({
   },
   itemText: {
     marginLeft: spacing.sm, fontSize: 13, fontWeight: "600",
-    color: colors.text,
+    color: colors.text, flex: 1,
   },
+  badge: {
+    minWidth: 20, height: 20, borderRadius: 10,
+    backgroundColor: "#EF4444",
+    alignItems: "center", justifyContent: "center",
+    paddingHorizontal: 5, marginLeft: spacing.xs,
+  },
+  badgeText: { color: "#fff", fontSize: 10, fontWeight: "800", lineHeight: 12 },
   logoutBtn: {
     margin: spacing.md,
     backgroundColor: colors.primary,
@@ -370,4 +440,16 @@ const drawerStyles = StyleSheet.create({
     paddingVertical: 12, borderRadius: radius.md,
   },
   logoutText: { color: "#fff", fontSize: 13, fontWeight: "700", marginLeft: 6 },
+});
+
+const styles = StyleSheet.create({
+  bellBtn: { marginRight: spacing.md, padding: 4 },
+  bellBadge: {
+    position: "absolute", top: 0, right: spacing.md - 4,
+    minWidth: 16, height: 16, borderRadius: 8,
+    backgroundColor: colors.danger,
+    alignItems: "center", justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  bellBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800", lineHeight: 11 },
 });

@@ -10,7 +10,7 @@ import {
   Alert,
   TextInput,
 } from "react-native";
-import api from "../api/api";
+import { researchCommentsApi } from "../api/endpoints";
 
 function StarRating({ rating, color = "#f59e0b" }) {
   return (
@@ -37,7 +37,7 @@ function ReviewCard({ item, onDelete }) {
           onPress: async () => {
             setDeleting(true);
             try {
-              await api.delete(`/admin/research-comments/${item.id}`);
+              await researchCommentsApi.remove(item.id);
               onDelete(item.id);
             } catch (e) {
               Alert.alert("Error", "Failed to delete the review. Please try again.");
@@ -118,7 +118,7 @@ export default function ResearchReviewScreen() {
   const fetchComments = useCallback(async (page = 1, replace = true) => {
     setError("");
     try {
-      const res = await api.get(`/admin/research-comments?page=${page}&search=${search}`);
+      const res = await researchCommentsApi.list({ page, search });
 
       // Handle different response structures robustly
       const data = Array.isArray(res.data) ? res.data : (res.data?.data?.data || res.data?.data || []);

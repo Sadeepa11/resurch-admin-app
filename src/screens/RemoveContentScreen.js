@@ -5,10 +5,11 @@ import { removeContentApi } from "../api/endpoints";
 import { colors, spacing } from "../theme/colors";
 
 const TYPES = [
-  { label: "Innovations", value: "innovations", endpoint: "/innovations" },
-  { label: "Research", value: "research", endpoint: "/research" },
-  { label: "Community", value: "community", endpoint: "/admin/community/posts" },
-  { label: "Investor", value: "investor", endpoint: "/admin/investorzone/posts" },
+  { label: "Innovations", value: "innovations",  listEndpoint: "/innovations",           deleteEndpoint: "/admin/innovations" },
+  { label: "Research",    value: "research",     listEndpoint: "/research",              deleteEndpoint: "/admin/research" },
+  { label: "Jobs",        value: "jobs",         listEndpoint: "/admin/jobs",            deleteEndpoint: "/jobs" },
+  { label: "Community",   value: "community",    listEndpoint: "/admin/community/posts", deleteEndpoint: "/admin/community/posts" },
+  { label: "Investor",    value: "investor",     listEndpoint: "/admin/investorzone/posts", deleteEndpoint: "/admin/investorzone/posts" },
 ];
 
 export default function RemoveContentScreen() {
@@ -17,16 +18,16 @@ export default function RemoveContentScreen() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
 
   const load = useCallback(async () => {
+    setError("");
     try {
-      const res = await removeContentApi.list(type.endpoint, { search, show_all: true, per_page: 50 });
-      
-      // Handle different response structures robustly
+      const res = await removeContentApi.list(type.listEndpoint, { search, show_all: true, per_page: 50 });
       const list = Array.isArray(res.data) ? res.data : (res.data?.data?.data || res.data?.data || res.data || []);
-      setItems(list);
+      setItems(Array.isArray(list) ? list : []);
     } catch (e) {
-      console.warn("Remove content fetch error:", e);
+      setError("Failed to load content. Pull down to retry.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -40,19 +41,19 @@ export default function RemoveContentScreen() {
 
   const remove = (item) =>
     Alert.alert(
-      "Permanent Removal",
-      `Remove "${item.title || item.content || item.id}"? This cannot be undone.`,
+      "⚠️ Permanent Removal",
+      `Permanently delete "${item.title || item.content?.slice(0, 60) || `Item #${item.id}`}"?\n\nThis will also remove all associated files from storage and cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Remove",
+          text: "Delete Permanently",
           style: "destructive",
           onPress: async () => {
             try {
-              await removeContentApi.remove(`${type.endpoint}/${item.id}`);
+              await removeContentApi.remove(`${type.deleteEndpoint}/${item.id}`);
               setItems((prev) => prev.filter((x) => x.id !== item.id));
             } catch {
-              Alert.alert("Error", "Delete failed.");
+              Alert.alert("Error", "Delete failed. Please try again.");
             }
           },
         },
@@ -66,7 +67,7 @@ export default function RemoveContentScreen() {
           {TYPES.map((t) => (
             <TouchableOpacity
               key={t.value}
-              onPress={() => setType(t)}
+              onPress={() => { setType(t); setItems([]); setSearch(""); }}
               style={[styles.tab, type.value === t.value && styles.tabActive]}
             >
               <Text style={[styles.tabText, type.value === t.value && styles.tabTextActive]}>
@@ -77,6 +78,12 @@ export default function RemoveContentScreen() {
         </View>
         <Input label="Search" placeholder="Title or keyword" value={search} onChangeText={setSearch} />
       </View>
+
+      {error ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
 
       {loading ? (
         <EmptyState loading />
@@ -144,4 +151,6 @@ const styles = StyleSheet.create({
   docLink: { fontSize: 12, color: colors.primary, marginTop: 4, fontWeight: "600" },
   sub: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
   date: { fontSize: 11, color: colors.textLight, marginTop: 4 },
+  errorBox: { margin: spacing.md, padding: spacing.sm, backgroundColor: "#fee2e2", borderRadius: 8 },
+  errorText: { fontSize: 13, color: "#991b1b" },
 });
