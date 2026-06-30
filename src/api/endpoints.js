@@ -51,6 +51,7 @@ export const researchCommentsApi = {
 export const advertisementsApi = {
   list: () => api.get("/admin/advertisements"),
   analytics: () => api.get("/admin/advertisements/analytics"),
+  create: (formData) => api.post("/admin/advertisements", formData, { headers: { "Content-Type": "multipart/form-data" } }),
   approve: (id) => api.post(`/admin/advertisements/${id}/approve`),
   reject: (id) => api.post(`/admin/advertisements/${id}/reject`),
   remove: (id) => api.delete(`/admin/advertisements/${id}`),
@@ -118,7 +119,7 @@ export const videoUploadApi = {
 const TOGGLE_BEST_TYPE_MAP = { research: "researcher", innovation: "innovator" };
 
 export const leaderboardApi = {
-  byContribution: (type) => api.get(`/super-admin/users-by-contribution?type=${type}`),
+  byContribution: (type) => api.get(`/super-admin/users-by-contribution?type=${TOGGLE_BEST_TYPE_MAP[type] ?? type}`),
   toggleBest: (userId, type) =>
     api.post(`/super-admin/users/${userId}/toggle-best`, { type: TOGGLE_BEST_TYPE_MAP[type] ?? type }),
 };

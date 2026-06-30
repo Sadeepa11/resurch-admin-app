@@ -64,7 +64,6 @@ export default function LeaderboardScreen() {
           data={items}
           keyExtractor={(u) => String(u.id)}
           renderItem={({ item, index }) => {
-            const count = type === "innovation" ? item.innovation_count : item.research_count;
             const isBest = type === "innovation" ? item.is_best_innovator : item.is_best_researcher;
             return (
               <Card>
@@ -77,11 +76,20 @@ export default function LeaderboardScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.name}>{item.first_name} {item.last_name}</Text>
                     <Text style={styles.email}>{item.email}</Text>
-                    <Text style={styles.contrib}>
-                      {count || 0} {type === "innovation" ? "innovations" : "papers"}
-                    </Text>
+                    <View style={styles.contribContainer}>
+                      <View style={[styles.contribBadge, { backgroundColor: colors.primaryLight }]}>
+                        <Text style={[styles.contribText, { color: colors.primary }]}>
+                          💡 Innovations: {item.innovations_count ?? 0}
+                        </Text>
+                      </View>
+                      <View style={[styles.contribBadge, { backgroundColor: colors.infoLight }]}>
+                        <Text style={[styles.contribText, { color: colors.info }]}>
+                          📄 Research: {item.researches_count ?? 0}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                  <View style={{ alignItems: "flex-end" }}>
+                  <View style={{ alignItems: "flex-end", marginLeft: spacing.sm }}>
                     {isBest ? <Badge tone="warning">⭐ Best</Badge> : null}
                     <Button
                       title={isBest ? "Remove" : "Mark Best"}
@@ -120,5 +128,7 @@ const styles = StyleSheet.create({
   rankImage: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
   name: { fontSize: 14, fontWeight: "700", color: colors.text },
   email: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
-  contrib: { fontSize: 12, color: colors.textMuted, marginTop: 4, fontWeight: "600" },
+  contribContainer: { flexDirection: "row", alignItems: "center", marginTop: 6, gap: spacing.xs, flexWrap: "wrap" },
+  contribBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  contribText: { fontSize: 11, fontWeight: "700" },
 });

@@ -13,7 +13,13 @@
       "Bash(xargs grep -l \"advertisements\")",
       "Bash(Select-Object FullName)",
       "Bash(Select-Object Name)",
-      "Bash(xargs grep -l \"notifications\\\\|Notifications\")"
+      "Bash(xargs grep -l \"notifications\\\\|Notifications\")",
+      "PowerShell(ls \"D:\\\\resurch-admin-app\\\\Research-Connect-Platform\\\\src\\\\pages\\\\Dashboard\\\\SuperAdminComponents\" | Where-Object { $_.Name -match \"Market\" })",
+      "Bash(npx expo *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Stop-Process *)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(npm run *)"
     ]
   }
 }

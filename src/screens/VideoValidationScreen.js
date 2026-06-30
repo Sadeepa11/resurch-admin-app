@@ -13,6 +13,7 @@ import {
   Alert,
   TextInput,
 } from "react-native";
+import { Video, ResizeMode } from "expo-av";
 import { innovationsApi } from "../api/endpoints";
 
 const STATUS_FILTERS = ["all", "pending", "active", "inactive", "revision_requested", "permanently_rejected"];
@@ -101,7 +102,22 @@ function VideoDetailModal({ visible, video, onClose, onStatusChange }) {
         </View>
 
         <ScrollView style={modal.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          {video.thumbnail ? (
+          {video.video_url ? (
+            <Video
+              source={{ uri: video.video_url }}
+              rate={1.0}
+              volume={1.0}
+              isMuted={false}
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay={false}
+              isLooping={false}
+              useNativeControls
+              style={modal.videoPlayer}
+              usePoster={!!video.thumbnail}
+              posterSource={{ uri: video.thumbnail }}
+              posterStyle={{ resizeMode: "cover" }}
+            />
+          ) : video.thumbnail ? (
             <Image source={{ uri: video.thumbnail }} style={modal.thumbnail} resizeMode="cover" />
           ) : (
             <View style={modal.placeholderThumb}>
@@ -455,6 +471,7 @@ const modal = StyleSheet.create({
   closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#f2f4f7", alignItems: "center", justifyContent: "center" },
   closeText: { fontSize: 14, color: "#667085", fontWeight: "700" },
   body: { flex: 1 },
+  videoPlayer: { width: "100%", height: 220, backgroundColor: "#000" },
   thumbnail: { width: "100%", height: 220 },
   placeholderThumb: { width: "100%", height: 220, backgroundColor: "#1d2939", alignItems: "center", justifyContent: "center" },
   placeholderIcon: { fontSize: 48, color: "#fff" },

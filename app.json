@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#dc2626"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.researchconnect.admin"
@@ -41,7 +43,10 @@
         {
           "iCloudContainerEnvironment": "Production"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-asset",
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {

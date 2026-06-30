@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, Alert, TouchableOpacity, Image } from "react-native";
-import { Screen, Card, Button, Input, Badge, Modal, EmptyState, StatCardRow } from "../components/ui";
+import { View, Text, StyleSheet, FlatList, Alert, TouchableOpacity, Image, TextInput } from "react-native";
+import { Screen, Card, Button, Badge, Modal, EmptyState, StatCardRow, Input } from "../components/ui";
 import { advertisementsApi } from "../api/endpoints";
 import { colors, spacing, radius } from "../theme/colors";
+
+const TYPE_LABELS = { carousel: "Carousel", banner: "Banner", side: "Side", popup: "Popup" };
 
 export default function AdvertisementsScreen() {
   const [ads, setAds] = useState([]);
@@ -10,9 +12,11 @@ export default function AdvertisementsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState("all");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   const [pricingOpen, setPricingOpen] = useState(false);
-  const [pricing, setPricing] = useState({ home: "", banner: "", sidebar: "" });
+  const [pricing, setPricing] = useState({ carousel_price: "", banner_price: "", side_price: "", popup_price: "" });
   const [savingPricing, setSavingPricing] = useState(false);
 
   const load = useCallback(async () => {
@@ -27,9 +31,10 @@ export default function AdvertisementsScreen() {
       if (prRes) {
         const p = prRes.data?.data || prRes.data || {};
         setPricing({
-          home: String(p.home || ""),
-          banner: String(p.banner || ""),
-          sidebar: String(p.sidebar || ""),
+          carousel_price: String(p.carousel_price || ""),
+          banner_price:   String(p.banner_price   || ""),
+          side_price:     String(p.side_price      || ""),
+          popup_price:    String(p.popup_price     || ""),
         });
       }
     } catch (e) {
@@ -43,30 +48,36 @@ export default function AdvertisementsScreen() {
   useEffect(() => { load(); }, [load]);
 
   const approve = async (id) => {
-    try { await advertisementsApi.approve(id); load(); } catch { Alert.alert("Error", "Approve failed"); }
+    try { await advertisementsApi.approve(id); load(); }
+    catch { Alert.alert("Error", "Approve failed"); }
   };
-  const reject = async (id) => {
-    try { await advertisementsApi.reject(id); load(); } catch { Alert.alert("Error", "Reject failed"); }
-  };
-  const remove = (id) =>
-    Alert.alert("Delete ad", "Are you sure?", [
+
+  const reject = (id) =>
+    Alert.alert("Reject Ad", "Reject this advertisement?", [
       { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try { await advertisementsApi.remove(id); load(); } catch { Alert.alert("Error", "Delete failed"); }
-        },
-      },
+      { text: "Reject", style: "destructive", onPress: async () => {
+        try { await advertisementsApi.reject(id); load(); }
+        catch { Alert.alert("Error", "Reject failed"); }
+      }},
+    ]);
+
+  const remove = (id) =>
+    Alert.alert("Delete Ad", "Permanently delete this ad?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: async () => {
+        try { await advertisementsApi.remove(id); load(); }
+        catch { Alert.alert("Error", "Delete failed"); }
+      }},
     ]);
 
   const savePricing = async () => {
     setSavingPricing(true);
     try {
       await advertisementsApi.updatePricing({
-        home: parseFloat(pricing.home) || 0,
-        banner: parseFloat(pricing.banner) || 0,
-        sidebar: parseFloat(pricing.sidebar) || 0,
+        carousel_price: parseFloat(pricing.carousel_price) || 0,
+        banner_price:   parseFloat(pricing.banner_price)   || 0,
+        side_price:     parseFloat(pricing.side_price)     || 0,
+        popup_price:    parseFloat(pricing.popup_price)    || 0,
       });
       setPricingOpen(false);
       Alert.alert("Saved", "Pricing updated.");
@@ -77,35 +88,65 @@ export default function AdvertisementsScreen() {
     }
   };
 
+  const pendingCount = ads.filter((a) => a.payment_status !== "paid").length;
+
   const filtered = ads.filter((a) => {
-    if (tab === "all") return true;
-    return (a.status || "").toLowerCase() === tab;
+    const matchSearch = !search || (a.title || "").toLowerCase().includes(search.toLowerCase());
+    const matchType   = typeFilter === "all" || a.type === typeFilter;
+    const matchTab    = tab === "all" || (tab === "pending" && a.payment_status !== "paid");
+    return matchSearch && matchType && matchTab;
   });
 
   const stats = [
-    { label: "Total Ads", value: ads.length },
-    { label: "Active", value: ads.filter((a) => a.status === "approved").length, color: colors.success },
-    { label: "Pending", value: ads.filter((a) => a.status === "pending").length, color: colors.warning },
-    { label: "Rejected", value: ads.filter((a) => a.status === "rejected").length, color: colors.danger },
+    { label: "Total Ads",    value: ads.length },
+    { label: "Active",       value: ads.filter((a) => a.is_active).length,                           color: colors.success },
+    { label: "Impressions",  value: (analytics?.total_impressions ?? 0).toLocaleString(),             color: colors.purple },
+    { label: "Clicks",       value: (analytics?.total_clicks ?? 0).toLocaleString(),                  color: colors.warning },
   ];
 
   return (
     <Screen scroll={false}>
       <View style={styles.header}>
         <Text style={styles.heading}>Advertisements</Text>
-        <Button title="💰 Update Pricing" variant="outline" size="sm" onPress={() => setPricingOpen(true)} />
+        <Button title="💰 Pricing" variant="outline" size="sm" onPress={() => setPricingOpen(true)} />
       </View>
 
       <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.md }}>
         <StatCardRow items={stats} />
-        <View style={styles.tabs}>
-          {["all", "pending", "approved", "rejected"].map((t) => (
+
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by title…"
+          placeholderTextColor={colors.textMuted}
+          value={search}
+          onChangeText={setSearch}
+        />
+
+        <View style={styles.row}>
+          {[
+            { key: "all",     label: "All" },
+            { key: "pending", label: pendingCount > 0 ? `Pending (${pendingCount})` : "Pending" },
+          ].map((t) => (
+            <TouchableOpacity
+              key={t.key}
+              onPress={() => setTab(t.key)}
+              style={[styles.tab, tab === t.key && styles.tabActive]}
+            >
+              <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={[styles.row, { marginBottom: spacing.sm, flexWrap: "wrap" }]}>
+          {["all", "carousel", "banner", "side", "popup"].map((t) => (
             <TouchableOpacity
               key={t}
-              onPress={() => setTab(t)}
-              style={[styles.tab, tab === t && styles.tabActive]}
+              onPress={() => setTypeFilter(t)}
+              style={[styles.chip, typeFilter === t && styles.chipActive]}
             >
-              <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t}</Text>
+              <Text style={[styles.chipText, typeFilter === t && styles.chipTextActive]}>
+                {t === "all" ? "All Types" : TYPE_LABELS[t]}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -118,29 +159,48 @@ export default function AdvertisementsScreen() {
           data={filtered}
           keyExtractor={(a) => String(a.id)}
           renderItem={({ item }) => {
-            const s = (item.status || "pending").toLowerCase();
-            const tone = s === "approved" ? "success" : s === "rejected" ? "danger" : "warning";
+            const isPaid     = item.payment_status === "paid";
+            const isRejected = item.payment_status === "rejected";
+
             return (
               <Card>
-                <View style={styles.row}>
-                  {item.image_url || item.image ? (
-                    <Image source={{ uri: item.image_url || item.image }} style={styles.thumb} />
+                <View style={styles.cardRow}>
+                  {item.image ? (
+                    <Image source={{ uri: item.image }} style={styles.thumb} />
                   ) : null}
                   <View style={{ flex: 1 }}>
                     <Text style={styles.title} numberOfLines={2}>{item.title || `Ad #${item.id}`}</Text>
-                    <Text style={styles.sub} numberOfLines={2}>{item.description || ""}</Text>
-                    <View style={styles.metaRow}>
-                      <Badge tone={tone}>{s}</Badge>
-                      {item.type ? <Badge tone="info">{item.type}</Badge> : null}
+                    {item.subtitle ? (
+                      <Text style={styles.sub} numberOfLines={1}>{item.subtitle}</Text>
+                    ) : null}
+
+                    <View style={styles.badgeRow}>
+                      <Badge tone={item.is_active ? "success" : "neutral"}>
+                        {item.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                      <Badge tone={isPaid ? "success" : "warning"}>
+                        {isPaid ? "Paid" : "Unpaid"}
+                      </Badge>
+                      {item.type ? (
+                        <Badge tone="info">{TYPE_LABELS[item.type] || item.type}</Badge>
+                      ) : null}
                     </View>
+
+                    {(item.current_impressions !== undefined || item.clicks !== undefined) && (
+                      <View style={styles.metricsRow}>
+                        <Text style={styles.metricText}>👁 {(item.current_impressions ?? 0).toLocaleString()}</Text>
+                        <Text style={styles.metricText}>👆 {(item.clicks ?? 0).toLocaleString()}</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
+
                 <View style={styles.actions}>
-                  {s === "pending" && (
-                    <>
-                      <Button title="Approve" variant="success" size="sm" onPress={() => approve(item.id)} />
-                      <Button title="Reject" variant="danger" size="sm" onPress={() => reject(item.id)} />
-                    </>
+                  {!isPaid && (
+                    <Button title="Approve" variant="success" size="sm" onPress={() => approve(item.id)} />
+                  )}
+                  {!isRejected && (
+                    <Button title="Reject" variant="danger" size="sm" onPress={() => reject(item.id)} />
                   )}
                   <Button title="Delete" variant="outline" size="sm" onPress={() => remove(item.id)} />
                 </View>
@@ -150,14 +210,14 @@ export default function AdvertisementsScreen() {
           contentContainerStyle={{ padding: spacing.md }}
           refreshing={refreshing}
           onRefresh={() => { setRefreshing(true); load(); }}
-          ListEmptyComponent={<EmptyState icon="📢" title="No ads" />}
+          ListEmptyComponent={<EmptyState icon="📢" title="No ads found" />}
         />
       )}
 
       <Modal
         visible={pricingOpen}
         onClose={() => setPricingOpen(false)}
-        title="Ad Pricing"
+        title="Ad Type Pricing"
         footer={
           <>
             <Button title="Cancel" variant="outline" onPress={() => setPricingOpen(false)} />
@@ -165,9 +225,30 @@ export default function AdvertisementsScreen() {
           </>
         }
       >
-        <Input label="Home Page Price" value={pricing.home} onChangeText={(v) => setPricing({ ...pricing, home: v })} keyboardType="decimal-pad" />
-        <Input label="Banner Price" value={pricing.banner} onChangeText={(v) => setPricing({ ...pricing, banner: v })} keyboardType="decimal-pad" />
-        <Input label="Sidebar Price" value={pricing.sidebar} onChangeText={(v) => setPricing({ ...pricing, sidebar: v })} keyboardType="decimal-pad" />
+        <Input
+          label="Carousel Ad Price (LKR)"
+          value={pricing.carousel_price}
+          onChangeText={(v) => setPricing({ ...pricing, carousel_price: v })}
+          keyboardType="decimal-pad"
+        />
+        <Input
+          label="Banner Ad Price (LKR)"
+          value={pricing.banner_price}
+          onChangeText={(v) => setPricing({ ...pricing, banner_price: v })}
+          keyboardType="decimal-pad"
+        />
+        <Input
+          label="Side Ad Price (LKR)"
+          value={pricing.side_price}
+          onChangeText={(v) => setPricing({ ...pricing, side_price: v })}
+          keyboardType="decimal-pad"
+        />
+        <Input
+          label="Popup Ad Price (LKR)"
+          value={pricing.popup_price}
+          onChangeText={(v) => setPricing({ ...pricing, popup_price: v })}
+          keyboardType="decimal-pad"
+        />
       </Modal>
     </Screen>
   );
@@ -175,22 +256,63 @@ export default function AdvertisementsScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    padding: spacing.md, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: colors.border,
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    padding: spacing.md,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   heading: { fontSize: 16, fontWeight: "800", color: colors.text },
-  tabs: { flexDirection: "row", gap: 6, marginBottom: spacing.sm },
+  searchInput: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  row: { flexDirection: "row", gap: 6, marginBottom: 6 },
   tab: {
-    paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999,
-    borderWidth: 1, borderColor: colors.border, backgroundColor: "#fff",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "#fff",
   },
   tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText: { fontSize: 11, fontWeight: "700", color: colors.textMuted, textTransform: "capitalize" },
+  tabText: { fontSize: 11, fontWeight: "700", color: colors.textMuted },
   tabTextActive: { color: "#fff" },
-  row: { flexDirection: "row", gap: spacing.sm },
+  chip: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "#fff",
+  },
+  chipActive: { backgroundColor: colors.purple, borderColor: colors.purple },
+  chipText: { fontSize: 10, fontWeight: "700", color: colors.textMuted },
+  chipTextActive: { color: "#fff" },
+  cardRow: { flexDirection: "row", gap: spacing.sm },
   thumb: { width: 70, height: 70, borderRadius: radius.md, backgroundColor: colors.bg },
   title: { fontSize: 13, fontWeight: "700", color: colors.text },
   sub: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
-  metaRow: { flexDirection: "row", gap: 6, marginTop: 6 },
-  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
+  badgeRow: { flexDirection: "row", gap: 6, marginTop: 6, flexWrap: "wrap" },
+  metricsRow: { flexDirection: "row", gap: spacing.md, marginTop: 4 },
+  metricText: { fontSize: 11, color: colors.textMuted },
+  actions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    flexWrap: "wrap",
+  },
 });
