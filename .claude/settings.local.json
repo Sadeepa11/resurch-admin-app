@@ -19,7 +19,9 @@
       "PowerShell(Get-Process *)",
       "PowerShell(Stop-Process *)",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git submodule *)",
+      "Bash(git pull *)"
     ]
   }
 }
