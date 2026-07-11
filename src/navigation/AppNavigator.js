@@ -24,6 +24,7 @@ import DashboardScreen from "../screens/DashboardScreen";
 import UserManagementScreen from "../screens/UserManagementScreen";
 import AdminManagementScreen from "../screens/AdminManagementScreen";
 import BlockedUsersScreen from "../screens/BlockedUsersScreen";
+import DeletedUsersScreen from "../screens/DeletedUsersScreen";
 import VideoValidationScreen from "../screens/VideoValidationScreen";
 import VideoUploadPaymentsScreen from "../screens/VideoUploadPaymentsScreen";
 import ResearchPapersScreen from "../screens/ResearchPapersScreen";
@@ -64,6 +65,7 @@ const MENU_GROUPS = [
       { name: "UserManagement", icon: "people", title: "All Users", perm: "all_users" },
       { name: "AdminManagement", icon: "shield-checkmark", title: "Admin Users", perm: "admin_users" },
       { name: "BlockedUsers", icon: "ban", title: "Blocked Users", perm: "blocked_users" },
+      { name: "DeletedUsers", icon: "trash-outline", title: "Deleted Users", perm: "deleted_users" },
       { name: "StudentVerification", icon: "school", title: "Student Verification", perm: "student_verification", badgeKey: "student_verification" },
     ],
   },
@@ -124,6 +126,7 @@ const SCREEN_COMPONENTS = {
   UserManagement: UserManagementScreen,
   AdminManagement: AdminManagementScreen,
   BlockedUsers: BlockedUsersScreen,
+  DeletedUsers: DeletedUsersScreen,
   StudentVerification: StudentVerificationScreen,
   VideoValidation: VideoValidationScreen,
   VideoUploadPayments: VideoUploadPaymentsScreen,
@@ -150,7 +153,7 @@ const SCREEN_COMPONENTS = {
 
 const DEFAULT_PERMISSIONS = {
   manager: {
-    dashboard: true, all_users: true, admin_users: false, blocked_users: true, student_verification: true,
+    dashboard: true, all_users: true, admin_users: false, blocked_users: true, deleted_users: true, student_verification: true,
     video_validation: true, video_upload_payments: true, research_papers: true, innovation_review: true,
     research_review: true, leaderboard: true, remove_content: false,
     marketing: false, hub_cards: true, job_management: true, post_job: true,
@@ -162,7 +165,7 @@ const DEFAULT_PERMISSIONS = {
     dashboard: true, marketing: true, advertisements: true,
   },
   admin: {
-    dashboard: true, all_users: true, blocked_users: true, student_verification: true,
+    dashboard: true, all_users: true, blocked_users: true, deleted_users: true, student_verification: true,
     video_validation: true, research_papers: true, innovation_review: true, research_review: true,
     leaderboard: true, hub_cards: true, job_management: true, post_job: true,
     community_management: true, investor_zone_management: true, hire_requests: true,
